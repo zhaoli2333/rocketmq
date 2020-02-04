@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.rocketmq.example.quickstart;
+package org.apache.rocketmq.example.delay;
 
 import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
@@ -23,7 +23,7 @@ import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 /**
- * This class demonstrates how to send messages to brokers using provided {@link DefaultMQProducer}.
+ * This class demonstrates how to send delay messages to brokers using provided {@link DefaultMQProducer}.
  */
 public class Producer {
     public static void main(String[] args) throws MQClientException, InterruptedException {

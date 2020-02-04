@@ -148,6 +148,14 @@ public class MessageStoreConfig {
     private String dLegerPeers;
     private String dLegerSelfId;
 
+    @ImportantField
+    private int segmentScale  = 60;
+    private long inAdvanceLoadMillis;
+    private long loadBlockingExitMillis;
+    private int dispatchLogKeepTime = 3 * 24;
+    private boolean isDeleteExpiredLogsEnable = false;
+
+
     public boolean isDebugLockEnable() {
         return debugLockEnable;
     }
@@ -701,5 +709,45 @@ public class MessageStoreConfig {
 
     public void setEnableDLegerCommitLog(boolean enableDLegerCommitLog) {
         this.enableDLegerCommitLog = enableDLegerCommitLog;
+    }
+
+    public int getSegmentScale() {
+        return segmentScale;
+    }
+
+    public void setSegmentScale(int segmentScale) {
+        this.segmentScale = segmentScale;
+    }
+
+    public long getInAdvanceLoadMillis() {
+        return inAdvanceLoadMillis;
+    }
+
+    public void setInAdvanceLoadMillis(long inAdvanceLoadMillis) {
+        this.inAdvanceLoadMillis = inAdvanceLoadMillis;
+    }
+
+    public long getLoadBlockingExitMillis() {
+        return loadBlockingExitMillis;
+    }
+
+    public void setLoadBlockingExitMillis(long loadBlockingExitMillis) {
+        this.loadBlockingExitMillis = loadBlockingExitMillis;
+    }
+
+    public int getDispatchLogKeepTime() {
+        return dispatchLogKeepTime;
+    }
+
+    public void setDispatchLogKeepTime(int dispatchLogKeepTime) {
+        this.dispatchLogKeepTime = dispatchLogKeepTime;
+    }
+
+    public boolean isDeleteExpiredLogsEnable() {
+        return isDeleteExpiredLogsEnable;
+    }
+
+    public void setDeleteExpiredLogsEnable(boolean deleteExpiredLogsEnable) {
+        isDeleteExpiredLogsEnable = deleteExpiredLogsEnable;
     }
 }

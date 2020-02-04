@@ -45,6 +45,7 @@ public class MessageConst {
     public static final String PROPERTY_TRANSACTION_CHECK_TIMES = "TRANSACTION_CHECK_TIMES";
     public static final String PROPERTY_CHECK_IMMUNITY_TIME_IN_SECONDS = "CHECK_IMMUNITY_TIME_IN_SECONDS";
     public static final String PROPERTY_INSTANCE_ID = "INSTANCE_ID";
+    public static final String PROPERTY_DELAY_TIME = "DELAY_TIME";
 
     public static final String KEY_SEPARATOR = " ";
 
@@ -74,5 +75,6 @@ public class MessageConst {
         STRING_HASH_SET.add(PROPERTY_MAX_RECONSUME_TIMES);
         STRING_HASH_SET.add(PROPERTY_CONSUME_START_TIMESTAMP);
         STRING_HASH_SET.add(PROPERTY_INSTANCE_ID);
+        STRING_HASH_SET.add(PROPERTY_DELAY_TIME);
     }
 }

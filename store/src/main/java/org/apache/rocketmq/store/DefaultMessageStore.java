@@ -52,6 +52,7 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
+import org.apache.rocketmq.store.delay.DelayMessageService;
 import org.apache.rocketmq.store.dledger.DLedgerCommitLog;
 import org.apache.rocketmq.store.ha.HAService;
 import org.apache.rocketmq.store.index.IndexService;
@@ -85,6 +86,8 @@ public class DefaultMessageStore implements MessageStore {
     private final ScheduleMessageService scheduleMessageService;
 
     private final StoreStatsService storeStatsService;
+
+    private final DelayMessageService delayMessageService;
 
     private final TransientStorePool transientStorePool;
 
@@ -139,6 +142,8 @@ public class DefaultMessageStore implements MessageStore {
 
         this.scheduleMessageService = new ScheduleMessageService(this);
 
+        this.delayMessageService = new DelayMessageService(messageStoreConfig,this);
+
         this.transientStorePool = new TransientStorePool(messageStoreConfig);
 
         if (messageStoreConfig.isTransientStorePoolEnable()) {
@@ -152,6 +157,7 @@ public class DefaultMessageStore implements MessageStore {
         this.dispatcherList = new LinkedList<>();
         this.dispatcherList.addLast(new CommitLogDispatcherBuildConsumeQueue());
         this.dispatcherList.addLast(new CommitLogDispatcherBuildIndex());
+        this.dispatcherList.addLast(new CommitLogDispatcherBuildDelayLog());
 
         File file = new File(StorePathConfigHelper.getLockFile(messageStoreConfig.getStorePathRootDir()));
         MappedFile.ensureDirOK(file.getParent());
@@ -279,6 +285,7 @@ public class DefaultMessageStore implements MessageStore {
         this.flushConsumeQueueService.start();
         this.commitLog.start();
         this.storeStatsService.start();
+        this.delayMessageService.start();
 
         this.createTempFile();
         this.addScheduleTask();
@@ -315,6 +322,7 @@ public class DefaultMessageStore implements MessageStore {
             this.allocateMappedFileService.shutdown();
             this.storeCheckpoint.flush();
             this.storeCheckpoint.shutdown();
+            this.delayMessageService.shutdown();
 
             if (this.runningFlags.isWriteable() && dispatchBehindBytes() == 0) {
                 this.deleteFile(StorePathConfigHelper.getAbortFile(this.messageStoreConfig.getStorePathRootDir()));
@@ -1484,7 +1492,9 @@ public class DefaultMessageStore implements MessageStore {
             switch (tranType) {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
-                    DefaultMessageStore.this.putMessagePositionInfo(request);
+                    if(!DelayMessageService.DELAY_TOPIC.equals(request.getTopic())) {
+                        DefaultMessageStore.this.putMessagePositionInfo(request);
+                    }
                     break;
                 case MessageSysFlag.TRANSACTION_PREPARED_TYPE:
                 case MessageSysFlag.TRANSACTION_ROLLBACK_TYPE:
@@ -1501,6 +1511,18 @@ public class DefaultMessageStore implements MessageStore {
                 DefaultMessageStore.this.indexService.buildIndex(request);
             }
         }
+    }
+
+    class CommitLogDispatcherBuildDelayLog implements CommitLogDispatcher {
+
+        @Override
+        public void dispatch(DispatchRequest request) {
+            if (DelayMessageService.DELAY_TOPIC.equals(request.getTopic())) {
+                // 延迟消息写入schedule log
+                DefaultMessageStore.this.delayMessageService.buildScheduleLog(request);
+            }
+        }
+
     }
 
     class CleanCommitLogService {
