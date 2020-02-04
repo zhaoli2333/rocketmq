@@ -24,7 +24,9 @@
                     ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
 
-		// 设置延迟时间，单位：秒
+		/*
+                 * 设置延迟时间，单位：秒
+                 */
                 msg.setDelayTime(5);
                 /*
                  * Call send message to deliver message to one of brokers.
