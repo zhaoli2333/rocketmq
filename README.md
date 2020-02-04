@@ -9,26 +9,8 @@
 <a name="hkrpC"></a>
 #### producer
 ```
-/*
-         * Instantiate with a producer group name.
-         */
+
         DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
-
-        /*
-         * Specify name server addresses.
-         * <p/>
-         *
-         * Alternatively, you may specify name server addresses via exporting environmental variable: NAMESRV_ADDR
-         * <pre>
-         * {@code
-         * producer.setNamesrvAddr("name-server1-ip:9876;name-server2-ip:9876");
-         * }
-         * </pre>
-         */
-
-        /*
-         * Launch the instance.
-         */
 
         producer.setNamesrvAddr("127.0.0.1:9876");
 
@@ -37,9 +19,6 @@
         for (int i = 0; i < 100000; i++) {
             try {
 
-                /*
-                 * Create a message instance, specifying topic, tag and message body.
-                 */
                 Message msg = new Message("TopicTest" /* Topic */,
                     "TagA" /* Tag */,
                     ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
