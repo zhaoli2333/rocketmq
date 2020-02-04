@@ -42,6 +42,7 @@ import org.apache.rocketmq.common.SystemClock;
 import org.apache.rocketmq.common.ThreadFactoryImpl;
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
+import org.apache.rocketmq.common.message.MessageConst;
 import org.apache.rocketmq.common.message.MessageDecoder;
 import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.common.message.MessageExtBatch;
@@ -1484,6 +1485,15 @@ public class DefaultMessageStore implements MessageStore {
         }, 6, TimeUnit.SECONDS);
     }
 
+    private boolean isDelayMessage(DispatchRequest dispatchRequest)  {
+        long delayTime = 0L;
+        String t = dispatchRequest.getPropertiesMap().get(MessageConst.PROPERTY_DELAY_TIME);
+        if (t != null) {
+            delayTime =  Long.parseLong(t);
+        }
+        return delayTime > 0;
+    }
+
     class CommitLogDispatcherBuildConsumeQueue implements CommitLogDispatcher {
 
         @Override
@@ -1492,7 +1502,7 @@ public class DefaultMessageStore implements MessageStore {
             switch (tranType) {
                 case MessageSysFlag.TRANSACTION_NOT_TYPE:
                 case MessageSysFlag.TRANSACTION_COMMIT_TYPE:
-                    if(!DelayMessageService.DELAY_TOPIC.equals(request.getTopic())) {
+                    if(!isDelayMessage(request)) {
                         DefaultMessageStore.this.putMessagePositionInfo(request);
                     }
                     break;
@@ -1517,7 +1527,7 @@ public class DefaultMessageStore implements MessageStore {
 
         @Override
         public void dispatch(DispatchRequest request) {
-            if (DelayMessageService.DELAY_TOPIC.equals(request.getTopic())) {
+            if (isDelayMessage(request)) {
                 // 延迟消息写入schedule log
                 DefaultMessageStore.this.delayMessageService.buildScheduleLog(request);
             }

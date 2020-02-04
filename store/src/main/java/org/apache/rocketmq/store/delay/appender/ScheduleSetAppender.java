@@ -39,9 +39,9 @@ public class ScheduleSetAppender implements LogAppender<ScheduleSetSequence, Log
     public AppendRecordResult<ScheduleSetSequence> appendLog(LogRecord log) {
         workingBuffer.clear();
         workingBuffer.flip();
-        final byte[] subjectBytes = log.getSubject().getBytes(StandardCharsets.UTF_8);
+        final byte[] topicBytes = log.getTopic().getBytes(StandardCharsets.UTF_8);
         final byte[] messageIdBytes = log.getMessageId().getBytes(StandardCharsets.UTF_8);
-        int recordSize = getRecordSize(log, subjectBytes.length, messageIdBytes.length);
+        int recordSize = getRecordSize(log, topicBytes.length, messageIdBytes.length);
         workingBuffer.limit(recordSize);
 
         long scheduleTime = log.getScheduleTime();
@@ -51,20 +51,20 @@ public class ScheduleSetAppender implements LogAppender<ScheduleSetSequence, Log
         workingBuffer.putInt(log.getPayloadSize());
         workingBuffer.putInt(messageIdBytes.length);
         workingBuffer.put(messageIdBytes);
-        workingBuffer.putInt(subjectBytes.length);
-        workingBuffer.put(subjectBytes);
+        workingBuffer.putInt(topicBytes.length);
+        workingBuffer.put(topicBytes);
         workingBuffer.put(log.getRecord());
         workingBuffer.flip();
         ScheduleSetSequence record = new ScheduleSetSequence(scheduleTime, sequence);
         return new AppendRecordResult<>(AppendMessageStatus.SUCCESS, 0, recordSize, workingBuffer, record);
     }
 
-    private int getRecordSize(LogRecord record, int subject, int messageId) {
+    private int getRecordSize(LogRecord record, int topic, int messageId) {
         return 8 + 8
                 + 4
                 + 4
                 + 4
-                + subject
+                + topic
                 + messageId
                 + record.getPayloadSize();
     }

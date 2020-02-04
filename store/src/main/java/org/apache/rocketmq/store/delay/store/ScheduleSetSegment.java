@@ -61,10 +61,10 @@ public class ScheduleSetSegment extends AbstractDelaySegment<ScheduleSetSequence
             int messageIdSize = result.getInt();
             byte[] messageId = new byte[messageIdSize];
             result.get(messageId);
-            int subjectSize = result.getInt();
-            byte[] subject = new byte[subjectSize];
-            result.get(subject);
-            return new ScheduleSetRecord(new String(messageId, StandardCharsets.UTF_8), new String(subject, StandardCharsets.UTF_8), scheduleTime, offset, size, sequence, result.slice());
+            int topicSize = result.getInt();
+            byte[] topic = new byte[topicSize];
+            result.get(topic);
+            return new ScheduleSetRecord(new String(messageId, StandardCharsets.UTF_8), new String(topic, StandardCharsets.UTF_8), scheduleTime, offset, size, sequence, result.slice());
         } catch (Throwable e) {
             LOGGER.error("schedule set segment recovered error,segment:{}, offset-size:{} {}", fileName, offset, size, e);
             return null;

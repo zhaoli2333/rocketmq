@@ -40,17 +40,18 @@ public class ScheduleLogSender implements Runnable{
     private DelayMessageStoreConfiguration delayConfig;
 
 
-    public ScheduleLogSender(DelayLogFacade delayLogFacade, DefaultMessageStore defaultMessageStore)  {
+    public ScheduleLogSender(DelayLogFacade delayLogFacade, DefaultMessageStore defaultMessageStore, DelayMessageStoreConfiguration delayConfig)  {
         this.delayLogFacade = delayLogFacade;
         this.defaultMessageStore = defaultMessageStore;
         this.queue = new LinkedBlockingQueue<>(this.queueSize);
         this.executor = new ThreadPoolExecutor(1, this.threads, 1L, TimeUnit.MINUTES,
                 new ArrayBlockingQueue<Runnable>(1), new ThreadFactoryImpl("schedule-log-send-task", true));
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        this.executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        this.delayConfig = delayConfig;
     }
 
 
-    public ScheduleLogSender(DelayLogFacade delayLogFacade, DefaultMessageStore defaultMessageStore, int queueSize, int threads) {
+    public ScheduleLogSender(DelayLogFacade delayLogFacade, DefaultMessageStore defaultMessageStore, DelayMessageStoreConfiguration delayConfig, int queueSize, int threads) {
         this.delayLogFacade = delayLogFacade;
         this.defaultMessageStore = defaultMessageStore;
         this.queueSize = queueSize;
@@ -58,7 +59,8 @@ public class ScheduleLogSender implements Runnable{
         this.queue = new LinkedBlockingQueue<>(this.queueSize);
         this.executor = new ThreadPoolExecutor(1, this.threads, 1L, TimeUnit.MINUTES,
                 new ArrayBlockingQueue<Runnable>(1), new ThreadFactoryImpl("schedule-log-send-task", true));
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        this.executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
+        this.delayConfig = delayConfig;
     }
 
     public void destroy() {
@@ -84,35 +86,37 @@ public class ScheduleLogSender implements Runnable{
     public void run() {
         while (!this.queue.isEmpty()) {
             ScheduleIndex index = this.queue.poll();
-            ScheduleSetRecord record = delayLogFacade.recoverLogRecord(index);
-            if(record != null) {
-                MessageExt msgExt = null;
-                try {
-                    msgExt = MessageDecoder.decode(record.getRecord(), true, false);
-                } finally {
-                    record.release();
-                }
-
-                if (msgExt != null) {
+            if(index != null) {
+                ScheduleSetRecord record = delayLogFacade.recoverLogRecord(index);
+                if (record != null) {
+                    MessageExt msgExt = null;
                     try {
-                        MessageExtBrokerInner msgInner = this.messageTimeup(msgExt);
-                        PutMessageResult putMessageResult = this.defaultMessageStore.putMessage(msgInner);
-
-                        if (putMessageResult != null
-                                && putMessageResult.getPutMessageStatus() == PutMessageStatus.PUT_OK) {
-                            delayLogFacade.appendDispatchLog(new DispatchLogRecord(record.getSubject(), record.getMessageId(), record.getScheduleTime(), record.getSequence()));
-                        } else {
-                            LOGGER.error(
-                                    "DelayMessageService, a message time up, but reput it failed, topic: {} msgId {}",
-                                    msgExt.getTopic(), msgExt.getMsgId());
-
-                        }
-                    } catch (Exception e) {
-                        LOGGER.error(
-                                "DelayMessageService, messageTimeup execute error, drop it. msgExt="
-                                        + msgExt);
+                        msgExt = MessageDecoder.decode(record.getRecord(), true, false);
+                    } finally {
+                        record.release();
                     }
 
+                    if (msgExt != null) {
+                        try {
+                            MessageExtBrokerInner msgInner = this.messageTimeup(msgExt);
+                            PutMessageResult putMessageResult = this.defaultMessageStore.putMessage(msgInner);
+
+                            if (putMessageResult != null
+                                    && putMessageResult.getPutMessageStatus() == PutMessageStatus.PUT_OK) {
+                                delayLogFacade.appendDispatchLog(new DispatchLogRecord(record.getTopic(), record.getMessageId(), record.getScheduleTime(), record.getSequence()));
+                            } else {
+                                LOGGER.error(
+                                        "DelayMessageService, a message time up, but reput it failed, topic: {} msgId {}",
+                                        msgExt.getTopic(), msgExt.getMsgId());
+
+                            }
+                        } catch (Exception e) {
+                            LOGGER.error(
+                                    "DelayMessageService, messageTimeup execute error, drop it. msgExt="
+                                            + msgExt);
+                        }
+
+                    }
                 }
             }
 
@@ -129,7 +133,6 @@ public class ScheduleLogSender implements Runnable{
         long tagsCodeValue =
                 MessageExtBrokerInner.tagsString2tagsCode(topicFilterType, msgInner.getTags());
         msgInner.setTagsCode(tagsCodeValue);
-        msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgExt.getProperties()));
 
         msgInner.setSysFlag(msgExt.getSysFlag());
         msgInner.setBornTimestamp(msgExt.getBornTimestamp());
@@ -140,11 +143,9 @@ public class ScheduleLogSender implements Runnable{
         msgInner.setWaitStoreMsgOK(false);
         MessageAccessor.clearProperty(msgInner, MessageConst.PROPERTY_DELAY_TIME);
 
-        msgInner.setTopic(msgInner.getProperty(MessageConst.PROPERTY_REAL_TOPIC));
-
-        String queueIdStr = msgInner.getProperty(MessageConst.PROPERTY_REAL_QUEUE_ID);
-        int queueId = Integer.parseInt(queueIdStr);
-        msgInner.setQueueId(queueId);
+        msgInner.setPropertiesString(MessageDecoder.messageProperties2String(msgInner.getProperties()));
+        msgInner.setTopic(msgExt.getTopic());
+        msgInner.setQueueId(msgExt.getQueueId());
 
         return msgInner;
     }

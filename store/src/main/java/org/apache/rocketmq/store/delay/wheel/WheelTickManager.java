@@ -65,7 +65,7 @@ public class WheelTickManager implements Switchable, HashedWheelTimer.Processor 
         this.loadingCursor = WheelLoadCursor.create();
         this.loadedCursor = WheelLoadCursor.create();
         this.defaultMessageStore = defaultMessageStore;
-        this.scheduleLogSender = new ScheduleLogSender(facade, defaultMessageStore);
+        this.scheduleLogSender = new ScheduleLogSender(facade, defaultMessageStore, delayConfig);
 
         this.loadScheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("wheel-segment-loader-%d").build());
     }

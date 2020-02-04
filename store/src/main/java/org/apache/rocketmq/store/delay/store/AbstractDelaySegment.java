@@ -70,7 +70,7 @@ public abstract class AbstractDelaySegment<T> implements DelaySegment<T> {
 
             AppendMessageStatus status = result.getStatus();
             if (AppendMessageStatus.SUCCESS != result.getStatus()) {
-                LOGGER.error("appendMessageLog delay segment error，subject:{},status:{},segment file:{}", log.getSubject(), status.name(), fileName);
+                LOGGER.error("appendMessageLog delay segment error，topic:{},status:{},segment file:{}", log.getTopic(), status.name(), fileName);
                 return new AppendMessageResult<>(AppendMessageStatus.UNKNOWN_ERROR, -1, -1);
             }
 

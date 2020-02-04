@@ -20,7 +20,7 @@ import java.nio.ByteBuffer;
 
 public interface LogRecord {
 
-    String getSubject();
+    String getTopic();
 
     String getMessageId();
 

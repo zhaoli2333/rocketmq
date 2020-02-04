@@ -17,20 +17,20 @@
 package org.apache.rocketmq.store.delay.model;
 
 public class LogRecordHeader {
-    private final String subject;
+    private final String topic;
     private final String messageId;
     private final long scheduleTime;
     private final long sequence;
 
-    public LogRecordHeader(String subject, String messageId, long scheduleTime, long sequence) {
-        this.subject = subject;
+    public LogRecordHeader(String topic, String messageId, long scheduleTime, long sequence) {
+        this.topic = topic;
         this.messageId = messageId;
         this.scheduleTime = scheduleTime;
         this.sequence = sequence;
     }
 
-    public String getSubject() {
-        return subject;
+    public String getTopic() {
+        return topic;
     }
 
     public String getMessageId() {
@@ -48,7 +48,7 @@ public class LogRecordHeader {
     @Override
     public String toString() {
         return "LogRecordHeader{" +
-                "subject=" + subject +
+                "topic=" + topic +
                 "messageId=" + messageId +
                 ", scheduleTime=" + scheduleTime +
                 ", sequence=" + sequence +

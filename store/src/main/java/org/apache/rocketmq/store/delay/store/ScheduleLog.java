@@ -70,13 +70,13 @@ public class ScheduleLog implements Log<ScheduleIndex, LogRecord>, Disposable {
         AppendLogResult<RecordResult<ScheduleSetSequence>> result = scheduleSet.append(record);
         int code = result.getCode();
         if (MessageProducerCode.SUCCESS != code) {
-            LOGGER.error("appendMessageLog schedule set error,log:{} {},code:{}", record.getSubject(), record.getMessageId(), code);
+            LOGGER.error("appendMessageLog schedule set error,log:{} {},code:{}", record.getTopic(), record.getMessageId(), code);
             return new AppendLogResult<>(MessageProducerCode.STORE_ERROR, "appendScheduleSetError");
         }
 
         RecordResult<ScheduleSetSequence> recordResult = result.getAdditional();
         ScheduleIndex index = new ScheduleIndex(
-                record.getSubject(),
+                record.getTopic(),
                 record.getScheduleTime(),
                 recordResult.getResult().getWroteOffset(),
                 recordResult.getResult().getWroteBytes(),

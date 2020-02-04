@@ -55,8 +55,8 @@ public class MessageLogRecord implements LogRecord {
     }
 
     @Override
-    public String getSubject() {
-        return header.getSubject();
+    public String getTopic() {
+        return header.getTopic();
     }
 
     @Override

@@ -32,11 +32,11 @@ public abstract class AbstractDelayLog<T> implements Log<RecordResult<T>, LogRec
 
     @Override
     public AppendLogResult<RecordResult<T>> append(LogRecord record) {
-        String subject = record.getSubject();
+        String topic = record.getTopic();
         RecordResult<T> result = container.append(record);
         PutMessageStatus status = result.getStatus();
         if (PutMessageStatus.SUCCESS != status) {
-            LOGGER.error("appendMessageLog schedule set file error,subject:{},status:{}", subject, status.name());
+            LOGGER.error("appendMessageLog schedule set file error,topic:{},status:{}", topic, status.name());
             return new AppendLogResult<>(MessageProducerCode.STORE_ERROR, status.name(), null);
         }
 

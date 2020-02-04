@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit;
 
 public class DelayMessageStoreConfiguration {
 
-    private static final String SCHEDULE_LOG = "schedule_log";
-    private static final String DISPATCH_LOG = "dispatch_log";
+    private static final String SCHEDULE_LOG = "schedulelog";
+    private static final String DISPATCH_LOG = "dispatchlog";
     private static final String CHECKPOINT = "checkpoint";
 
     private static final long MS_PER_HOUR = TimeUnit.HOURS.toMillis(1);

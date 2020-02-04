@@ -61,33 +61,33 @@ public class ScheduleIndexVisitor extends AbstractLogVisitor<ScheduleIndex> {
         if (buffer.remaining() < Integer.BYTES) {
             return Optional.empty();
         }
-        int subjectLen = buffer.getInt();
+        int topicLen = buffer.getInt();
 
-        if (buffer.remaining() < subjectLen) {
+        if (buffer.remaining() < topicLen) {
             return Optional.empty();
         }
-        byte[] bs = new byte[subjectLen];
+        byte[] bs = new byte[topicLen];
         buffer.get(bs);
-        String subject = CharsetUtils.toUTF8String(bs);
+        String topic = CharsetUtils.toUTF8String(bs);
 
         if (buffer.remaining() < payloadSize) {
             return Optional.empty();
         }
 
-        int metaSize = getMetaSize(messageId, subjectLen);
+        int metaSize = getMetaSize(messageId, topicLen);
         int recordSize = metaSize + payloadSize;
         long startOffset = visitedBufferSize();
         buffer.position(Math.toIntExact(curPos + recordSize));
 
-        return Optional.of(new ScheduleIndex(subject, scheduleTime, startOffset, recordSize, sequence));
+        return Optional.of(new ScheduleIndex(topic, scheduleTime, startOffset, recordSize, sequence));
     }
 
-    private int getMetaSize(int messageId, int subjectLen) {
+    private int getMetaSize(int messageId, int topicLen) {
         return 8 + 8
                 + 4
                 + 4
                 + 4
                 + messageId
-                + subjectLen;
+                + topicLen;
     }
 }

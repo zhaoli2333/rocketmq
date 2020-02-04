@@ -23,14 +23,14 @@ public class ScheduleIndex {
 
     private static final Interner<String> INTERNER = Interners.newStrongInterner();
 
-    private final String subject;
+    private final String topic;
     private final long scheduleTime;
     private final long offset;
     private final int size;
     private final long sequence;
 
-    public ScheduleIndex(String subject, long scheduleTime, long offset, int size, long sequence) {
-        this.subject = INTERNER.intern(subject);
+    public ScheduleIndex(String topic, long scheduleTime, long offset, int size, long sequence) {
+        this.topic = INTERNER.intern(topic);
         this.scheduleTime = scheduleTime;
         this.offset = offset;
         this.size = size;
@@ -53,7 +53,7 @@ public class ScheduleIndex {
         return sequence;
     }
 
-    public String getSubject() {
-        return subject;
+    public String getTopic() {
+        return topic;
     }
 }

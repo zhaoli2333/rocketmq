@@ -50,27 +50,31 @@ public class DelayMessageService {
 
 
     public void buildScheduleLog(DispatchRequest request) {
+        SelectMappedBufferResult selectMappedBufferResult = null;
+        try {
+            selectMappedBufferResult = defaultMessageStore.getCommitLog().getData(request.getCommitLogOffset());
 
-        SelectMappedBufferResult result = defaultMessageStore.getCommitLog().getData(request.getCommitLogOffset());
+            long scheduleTime = request.getStoreTimestamp() + Long.parseLong(request.getPropertiesMap().get(MessageConst.PROPERTY_DELAY_TIME)) * 1000;
 
-        long scheduleTime = request.getStoreTimestamp() + Long.parseLong(request.getPropertiesMap().get(MessageConst.PROPERTY_DELAY_TIME)) * 1000;
+            String topic = request.getTopic();
+            String messageId = request.getUniqKey();
+            long sequence = request.getConsumeQueueOffset();
+            LogRecordHeader header = new LogRecordHeader(topic, messageId, scheduleTime, sequence);
 
-        String subject = request.getTopic();
-        String messageId = request.getUniqKey();
-        long sequence = request.getConsumeQueueOffset();
-        LogRecordHeader header = new LogRecordHeader(subject, messageId, scheduleTime, sequence);
+            LogRecord record = new MessageLogRecord(header, selectMappedBufferResult.getSize(), selectMappedBufferResult.getStartOffset(), selectMappedBufferResult.getSize(), selectMappedBufferResult.getByteBuffer());
 
-        LogRecord record = new MessageLogRecord(header, result.getSize(), result.getStartOffset(), result.getSize(), result.getByteBuffer());
+            AppendLogResult<ScheduleIndex> appendLogResult  = delayLogFacade.appendScheduleLog(record);
 
-        AppendLogResult<ScheduleIndex> appendLogResult  = delayLogFacade.appendScheduleLog(record);
-
-        if (MessageProducerCode.SUCCESS != appendLogResult.getCode()) {
-            LOGGER.error("Append schedule log error,log:{} {},code:{}", record.getSubject(), record.getMessageId(), appendLogResult.getCode());
-        } else {
-            addWheeel(appendLogResult.getAdditional());
+            if (MessageProducerCode.SUCCESS != appendLogResult.getCode()) {
+                LOGGER.error("Append schedule log error,log:{} {},code:{}", record.getTopic(), record.getMessageId(), appendLogResult.getCode());
+            } else {
+                addWheeel(appendLogResult.getAdditional());
+            }
+        } finally {
+            if(selectMappedBufferResult != null)  {
+                selectMappedBufferResult.release();
+            }
         }
-
-
 
     }
 

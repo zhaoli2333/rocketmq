@@ -21,13 +21,13 @@ import java.nio.ByteBuffer;
 public class DispatchLogRecord implements LogRecord {
     private final LogRecordHeader header;
 
-    public DispatchLogRecord(String subject, String messageId, long scheduleTime, long sequence) {
-        this.header = new LogRecordHeader(subject, messageId, scheduleTime, sequence);
+    public DispatchLogRecord(String topic, String messageId, long scheduleTime, long sequence) {
+        this.header = new LogRecordHeader(topic, messageId, scheduleTime, sequence);
     }
 
     @Override
-    public String getSubject() {
-        return header.getSubject();
+    public String getTopic() {
+        return header.getTopic();
     }
 
     @Override
