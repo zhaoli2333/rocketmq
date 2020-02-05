@@ -28,6 +28,10 @@ import org.apache.rocketmq.store.delay.model.LogRecord;
 import org.apache.rocketmq.store.delay.model.ScheduleIndex;
 import org.apache.rocketmq.store.delay.model.ScheduleSetRecord;
 import org.apache.rocketmq.store.delay.store.*;
+import org.apache.rocketmq.store.delay.store.log.DispatchLog;
+import org.apache.rocketmq.store.delay.store.log.DispatchLogSegment;
+import org.apache.rocketmq.store.delay.store.log.ScheduleLog;
+import org.apache.rocketmq.store.delay.store.log.ScheduleSetSegment;
 import org.apache.rocketmq.store.delay.wheel.WheelLoadCursor;
 
 import java.util.function.Consumer;
@@ -45,7 +49,7 @@ public class DefaultDelayLogFacade implements DelayLogFacade {
     public DefaultDelayLogFacade(final DelayMessageStoreConfiguration config) {
         this.scheduleLog = new ScheduleLog(config);
         this.dispatchLog = new DispatchLog(config);
-        this.offsetManager = new IterateOffsetManager(config.getCheckpointStorePath(), scheduleLog::flush);
+        this.offsetManager = new IterateOffsetManager(config.getCheckpointStorePath(), scheduleLog);
         this.logFlusher = new LogFlusher(offsetManager, dispatchLog);
         this.logCleaner = new LogCleaner(config, dispatchLog, scheduleLog);
 

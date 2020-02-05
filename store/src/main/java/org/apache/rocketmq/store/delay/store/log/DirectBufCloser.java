@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.store.delay.base;
+package org.apache.rocketmq.store.delay.store.log;
 
+import sun.misc.Cleaner;
+import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 
-public class SegmentBufferExtend extends SegmentBuffer {
-    private long baseOffset;
+public class DirectBufCloser {
+    public static void close(ByteBuffer buffer) {
+        if (buffer == null || !buffer.isDirect() || buffer.capacity() == 0) {
+            return;
+        }
 
-    public SegmentBufferExtend(long startOffset, ByteBuffer buffer, int size, long baseOffset) {
-        super(startOffset, buffer, size);
-        this.baseOffset = baseOffset;
-    }
+        try {
+            final Cleaner cleaner = ((DirectBuffer) buffer).cleaner();
+            cleaner.clean();
+        } catch (Exception ignore) {
 
-    public long getBaseOffset() {
-        return baseOffset;
+        }
     }
 }

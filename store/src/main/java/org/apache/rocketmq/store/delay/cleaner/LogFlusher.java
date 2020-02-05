@@ -17,7 +17,7 @@
 package org.apache.rocketmq.store.delay.cleaner;
 
 import org.apache.rocketmq.store.delay.common.Switchable;
-import org.apache.rocketmq.store.delay.store.DispatchLog;
+import org.apache.rocketmq.store.delay.store.log.DispatchLog;
 import org.apache.rocketmq.store.delay.store.IterateOffsetManager;
 import org.apache.rocketmq.store.delay.store.PeriodicFlushService;
 

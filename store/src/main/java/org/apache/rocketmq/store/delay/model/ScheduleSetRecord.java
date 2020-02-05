@@ -17,7 +17,7 @@
 package org.apache.rocketmq.store.delay.model;
 
 
-import org.apache.rocketmq.store.delay.store.DirectBufCloser;
+import org.apache.rocketmq.store.delay.store.log.DirectBufCloser;
 
 import java.nio.ByteBuffer;
 

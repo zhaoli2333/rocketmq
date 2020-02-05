@@ -14,20 +14,16 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.store.delay.base;
+package org.apache.rocketmq.store.delay.store.visitor;
 
+import java.util.Optional;
 
-import java.nio.ByteBuffer;
+public interface LogVisitor<T> {
 
-public class SegmentBufferExtend extends SegmentBuffer {
-    private long baseOffset;
+    Optional<T> nextRecord();
 
-    public SegmentBufferExtend(long startOffset, ByteBuffer buffer, int size, long baseOffset) {
-        super(startOffset, buffer, size);
-        this.baseOffset = baseOffset;
-    }
+    long visitedBufferSize();
 
-    public long getBaseOffset() {
-        return baseOffset;
-    }
+    void close();
+
 }

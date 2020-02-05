@@ -14,20 +14,12 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.store.delay.base;
+package org.apache.rocketmq.store.delay.store.appender;
 
+import org.apache.rocketmq.store.delay.model.AppendMessageResult;
 
 import java.nio.ByteBuffer;
 
-public class SegmentBufferExtend extends SegmentBuffer {
-    private long baseOffset;
-
-    public SegmentBufferExtend(long startOffset, ByteBuffer buffer, int size, long baseOffset) {
-        super(startOffset, buffer, size);
-        this.baseOffset = baseOffset;
-    }
-
-    public long getBaseOffset() {
-        return baseOffset;
-    }
+public interface MessageAppender<T, R> {
+    AppendMessageResult<R> doAppend(final long baseOffset, final ByteBuffer targetBuffer, final int freeSpace, final T message);
 }

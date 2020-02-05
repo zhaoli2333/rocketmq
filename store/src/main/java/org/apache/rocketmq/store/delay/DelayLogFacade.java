@@ -21,11 +21,10 @@ import org.apache.rocketmq.store.delay.model.AppendLogResult;
 import org.apache.rocketmq.store.delay.model.LogRecord;
 import org.apache.rocketmq.store.delay.model.ScheduleIndex;
 import org.apache.rocketmq.store.delay.model.ScheduleSetRecord;
-import org.apache.rocketmq.store.delay.store.DispatchLogSegment;
-import org.apache.rocketmq.store.delay.store.ScheduleSetSegment;
+import org.apache.rocketmq.store.delay.store.log.DispatchLogSegment;
+import org.apache.rocketmq.store.delay.store.log.ScheduleSetSegment;
 import org.apache.rocketmq.store.delay.wheel.WheelLoadCursor;
 
-import java.util.List;
 import java.util.function.Consumer;
 
 public interface DelayLogFacade {

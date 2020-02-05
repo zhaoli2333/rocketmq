@@ -14,20 +14,17 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.store.delay.base;
+package org.apache.rocketmq.store.delay.store.validator;
 
 
-import java.nio.ByteBuffer;
+import org.apache.rocketmq.store.delay.store.log.DelaySegment;
 
-public class SegmentBufferExtend extends SegmentBuffer {
-    private long baseOffset;
+import java.io.IOException;
 
-    public SegmentBufferExtend(long startOffset, ByteBuffer buffer, int size, long baseOffset) {
-        super(startOffset, buffer, size);
-        this.baseOffset = baseOffset;
-    }
+public class DefaultDelaySegmentValidator implements DelaySegmentValidator {
 
-    public long getBaseOffset() {
-        return baseOffset;
+    @Override
+    public long validate(DelaySegment segment) throws IOException {
+        return segment.validate();
     }
 }

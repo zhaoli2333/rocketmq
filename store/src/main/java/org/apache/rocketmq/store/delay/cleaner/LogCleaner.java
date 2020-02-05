@@ -22,8 +22,8 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.delay.common.Switchable;
 import org.apache.rocketmq.store.delay.config.DelayMessageStoreConfiguration;
-import org.apache.rocketmq.store.delay.store.DispatchLog;
-import org.apache.rocketmq.store.delay.store.ScheduleLog;
+import org.apache.rocketmq.store.delay.store.log.DispatchLog;
+import org.apache.rocketmq.store.delay.store.log.ScheduleLog;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;

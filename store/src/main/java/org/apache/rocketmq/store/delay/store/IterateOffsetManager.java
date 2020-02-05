@@ -18,6 +18,7 @@ package org.apache.rocketmq.store.delay.store;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.rocketmq.store.delay.store.log.Log;
 
 import java.io.IOException;
 
@@ -27,17 +28,17 @@ public class IterateOffsetManager {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final CheckpointStore<Long> offsetCheckpointStore;
-    private final FlushHook flushHook;
+    private final Log log;
 
     private volatile long iterateOffset = 0;
 
-    public IterateOffsetManager(String checkpointStorePath, FlushHook hook) {
+    public IterateOffsetManager(String checkpointStorePath, Log log) {
         this.offsetCheckpointStore = new CheckpointStore<>(checkpointStorePath, ITERATE_OFFSET_FILE, new IterateCheckpointSerde());
         Long offset = this.offsetCheckpointStore.loadCheckpoint();
         if (null != offset) {
             this.iterateOffset = offset;
         }
-        this.flushHook = hook;
+        this.log = log;
     }
 
     public synchronized void updateIterateOffset(long offset) {
@@ -60,7 +61,7 @@ public class IterateOffsetManager {
 
             @Override
             public void flush() {
-                flushHook.beforeFlush();
+                log.flush();
                 offsetCheckpointStore.saveCheckpoint(iterateOffset);
             }
         };

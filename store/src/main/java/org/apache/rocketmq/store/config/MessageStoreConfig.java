@@ -150,7 +150,6 @@ public class MessageStoreConfig {
 
     @ImportantField
     private int segmentScale  = 60;
-    private long inAdvanceLoadMillis;
     private long loadBlockingExitMillis;
     private int dispatchLogKeepTime = 3 * 24;
     private boolean isDeleteExpiredLogsEnable = false;
@@ -717,14 +716,6 @@ public class MessageStoreConfig {
 
     public void setSegmentScale(int segmentScale) {
         this.segmentScale = segmentScale;
-    }
-
-    public long getInAdvanceLoadMillis() {
-        return inAdvanceLoadMillis;
-    }
-
-    public void setInAdvanceLoadMillis(long inAdvanceLoadMillis) {
-        this.inAdvanceLoadMillis = inAdvanceLoadMillis;
     }
 
     public long getLoadBlockingExitMillis() {

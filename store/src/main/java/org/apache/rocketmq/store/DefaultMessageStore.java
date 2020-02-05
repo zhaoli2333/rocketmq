@@ -53,7 +53,7 @@ import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
-import org.apache.rocketmq.store.delay.DelayMessageService;
+import org.apache.rocketmq.store.delay.DelayMessageManager;
 import org.apache.rocketmq.store.dledger.DLedgerCommitLog;
 import org.apache.rocketmq.store.ha.HAService;
 import org.apache.rocketmq.store.index.IndexService;
@@ -88,7 +88,7 @@ public class DefaultMessageStore implements MessageStore {
 
     private final StoreStatsService storeStatsService;
 
-    private final DelayMessageService delayMessageService;
+    private final DelayMessageManager delayMessageManager;
 
     private final TransientStorePool transientStorePool;
 
@@ -143,7 +143,7 @@ public class DefaultMessageStore implements MessageStore {
 
         this.scheduleMessageService = new ScheduleMessageService(this);
 
-        this.delayMessageService = new DelayMessageService(messageStoreConfig,this);
+        this.delayMessageManager = new DelayMessageManager(messageStoreConfig,this);
 
         this.transientStorePool = new TransientStorePool(messageStoreConfig);
 
@@ -286,7 +286,7 @@ public class DefaultMessageStore implements MessageStore {
         this.flushConsumeQueueService.start();
         this.commitLog.start();
         this.storeStatsService.start();
-        this.delayMessageService.start();
+        this.delayMessageManager.start();
 
         this.createTempFile();
         this.addScheduleTask();
@@ -323,7 +323,7 @@ public class DefaultMessageStore implements MessageStore {
             this.allocateMappedFileService.shutdown();
             this.storeCheckpoint.flush();
             this.storeCheckpoint.shutdown();
-            this.delayMessageService.shutdown();
+            this.delayMessageManager.shutdown();
 
             if (this.runningFlags.isWriteable() && dispatchBehindBytes() == 0) {
                 this.deleteFile(StorePathConfigHelper.getAbortFile(this.messageStoreConfig.getStorePathRootDir()));
@@ -1529,7 +1529,7 @@ public class DefaultMessageStore implements MessageStore {
         public void dispatch(DispatchRequest request) {
             if (isDelayMessage(request)) {
                 // 延迟消息写入schedule log
-                DefaultMessageStore.this.delayMessageService.buildScheduleLog(request);
+                DefaultMessageStore.this.delayMessageManager.buildScheduleLog(request);
             }
         }
 

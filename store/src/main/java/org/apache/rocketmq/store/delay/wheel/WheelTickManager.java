@@ -27,9 +27,9 @@ import org.apache.rocketmq.store.delay.base.LongHashSet;
 import org.apache.rocketmq.store.delay.common.Switchable;
 import org.apache.rocketmq.store.delay.config.DelayMessageStoreConfiguration;
 import org.apache.rocketmq.store.delay.model.ScheduleIndex;
-import org.apache.rocketmq.store.delay.store.DispatchLogSegment;
-import org.apache.rocketmq.store.delay.store.ScheduleSetSegment;
-import org.apache.rocketmq.store.delay.visitor.LogVisitor;
+import org.apache.rocketmq.store.delay.store.log.DispatchLogSegment;
+import org.apache.rocketmq.store.delay.store.log.ScheduleSetSegment;
+import org.apache.rocketmq.store.delay.store.visitor.LogVisitor;
 
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -37,7 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.rocketmq.store.delay.store.ScheduleOffsetResolver.resolveSegment;
+import static org.apache.rocketmq.store.delay.store.log.ScheduleOffsetResolver.resolveSegment;
 
 public class WheelTickManager implements Switchable, HashedWheelTimer.Processor {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);

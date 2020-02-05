@@ -106,13 +106,13 @@ public class ScheduleLogSender implements Runnable{
                                 delayLogFacade.appendDispatchLog(new DispatchLogRecord(record.getTopic(), record.getMessageId(), record.getScheduleTime(), record.getSequence()));
                             } else {
                                 LOGGER.error(
-                                        "DelayMessageService, a message time up, but reput it failed, topic: {} msgId {}",
+                                        "DelayMessageManager, a message time up, but reput it failed, topic: {} msgId {}",
                                         msgExt.getTopic(), msgExt.getMsgId());
 
                             }
                         } catch (Exception e) {
                             LOGGER.error(
-                                    "DelayMessageService, messageTimeup execute error, drop it. msgExt="
+                                    "DelayMessageManager, messageTimeup execute error, drop it. msgExt="
                                             + msgExt);
                         }
 
