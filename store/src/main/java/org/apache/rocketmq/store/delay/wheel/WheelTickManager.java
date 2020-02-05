@@ -28,6 +28,7 @@ import org.apache.rocketmq.store.delay.common.Switchable;
 import org.apache.rocketmq.store.delay.config.DelayMessageStoreConfiguration;
 import org.apache.rocketmq.store.delay.model.ScheduleIndex;
 import org.apache.rocketmq.store.delay.store.log.DispatchLogSegment;
+import org.apache.rocketmq.store.delay.store.log.ScheduleOffsetResolver;
 import org.apache.rocketmq.store.delay.store.log.ScheduleSetSegment;
 import org.apache.rocketmq.store.delay.store.visitor.LogVisitor;
 
@@ -37,11 +38,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.rocketmq.store.delay.store.log.ScheduleOffsetResolver.resolveSegment;
-
-public class WheelTickManager implements Switchable, HashedWheelTimer.Processor {
+public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.Processor {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    // 每500ms一个tick
     private static final int TICKS_PER_WHEEL = 2 * 60 * 60;
 
     // 默认60分钟
@@ -76,7 +76,7 @@ public class WheelTickManager implements Switchable, HashedWheelTimer.Processor 
             timer.start();
             started.set(true);
             recover();
-            loadScheduler.scheduleWithFixedDelay(this::load, 0, delayConfig.getLoadSegmentDelayMinutes(), TimeUnit.MINUTES);
+            loadScheduler.scheduleWithFixedDelay(this, 0, delayConfig.getLoadSegmentDelayMinutes(), TimeUnit.MINUTES);
             LOGGER.info("wheel started.");
         }
     }
@@ -99,14 +99,14 @@ public class WheelTickManager implements Switchable, HashedWheelTimer.Processor 
 
     private void doRecover(DispatchLogSegment dispatchLogSegment) {
         long segmentBaseOffset = dispatchLogSegment.getSegmentBaseOffset();
-        ScheduleSetSegment setSegment = facade.loadScheduleLogSegment(segmentBaseOffset);
-        if (setSegment == null) {
+        ScheduleSetSegment scheduleSetSegment = facade.loadScheduleLogSegment(segmentBaseOffset);
+        if (scheduleSetSegment == null) {
             LOGGER.error("load schedule index error,dispatch segment:{}", segmentBaseOffset);
             return;
         }
 
         LongHashSet dispatchedSet = loadDispatchLog(dispatchLogSegment);
-        WheelLoadCursor.Cursor loadCursor = facade.loadUnDispatch(setSegment, dispatchedSet, this::refresh);
+        WheelLoadCursor.Cursor loadCursor = facade.loadUnDispatch(scheduleSetSegment, dispatchedSet, this::refresh);
         long baseOffset = loadCursor.getBaseOffset();
         loadingCursor.shiftCursor(baseOffset, loadCursor.getOffset());
         loadedCursor.shiftCursor(baseOffset);
@@ -131,9 +131,111 @@ public class WheelTickManager implements Switchable, HashedWheelTimer.Processor 
         return started.get();
     }
 
-    private void load() {
+
+    /**
+     * resolve wheel-load start index
+     *
+     * @return generally, result > 0, however the result might be -1. -1 mean that no higher key.
+     */
+    private long resolveStartIndex() {
+        WheelLoadCursor.Cursor loadedEntry = loadedCursor.cursor();
+        long startIndex = loadedEntry.getBaseOffset();
+        long offset = loadedEntry.getOffset();
+
+        if (offset < 0) return facade.higherScheduleBaseOffset(startIndex);
+
+        return startIndex;
+    }
+
+    private void loadSegment(ScheduleSetSegment segment) {
+        long baseOffset = segment.getSegmentBaseOffset();
+        long offset = segment.getWrotePosition();
+        if (!loadingCursor.shiftCursor(baseOffset, offset)) {
+            LOGGER.error("doLoadSegment error,shift loadingCursor failed,from {}-{} to {}-{}", loadingCursor.baseOffset(), loadingCursor.offset(), baseOffset, offset);
+            return;
+        }
+
+        WheelLoadCursor.Cursor loadedCursorEntry = loadedCursor.cursor();
+        // have loaded
+        if (baseOffset < loadedCursorEntry.getBaseOffset()) return;
+
+        long startOffset = 0;
+        // last load action happened error
+        if (baseOffset == loadedCursorEntry.getBaseOffset() && loadedCursorEntry.getOffset() > -1)
+            startOffset = loadedCursorEntry.getOffset();
+
+        LogVisitor<ScheduleIndex> visitor = segment.newVisitor(startOffset, delayConfig.getSingleMessageLimitSize());
+        try {
+            loadedCursor.shiftCursor(baseOffset, startOffset);
+
+            long currentOffset = startOffset;
+            while (currentOffset < offset) {
+                Optional<ScheduleIndex> recordOptional = visitor.nextRecord();
+                if (!recordOptional.isPresent()) break;
+                ScheduleIndex index = recordOptional.get();
+                currentOffset = index.getOffset() + index.getSize();
+                refresh(index);
+                loadedCursor.shiftOffset(currentOffset);
+            }
+            loadedCursor.shiftCursor(baseOffset);
+            LOGGER.info("loaded segment:{} {}", loadedCursor.baseOffset(), currentOffset);
+        } finally {
+            visitor.close();
+        }
+    }
+
+    private void refresh(ScheduleIndex index) {
+        long now = System.currentTimeMillis();
+        long scheduleTime = now;
+        try {
+            scheduleTime = index.getScheduleTime();
+            timer.newTimeout(index, scheduleTime - now, TimeUnit.MILLISECONDS);
+        } catch (Throwable e) {
+            LOGGER.error("wheel refresh error, scheduleTime:{}, delay:{}", scheduleTime, scheduleTime - now);
+            throw Throwables.propagate(e);
+        }
+    }
+
+    @Override
+    public void shutdown() {
+        if (isStarted()) {
+            loadScheduler.shutdown();
+            timer.stop();
+            scheduleLogSender.destroy();
+            started.set(false);
+            LOGGER.info("wheel shutdown.");
+        }
+    }
+
+    public void addWheel(ScheduleIndex index) {
+        refresh(index);
+    }
+
+    public boolean canAdd(long scheduleTime, long offset) {
+        WheelLoadCursor.Cursor currentCursor = loadingCursor.cursor();
+        long currentBaseOffset = currentCursor.getBaseOffset();
+        long currentOffset = currentCursor.getOffset();
+
+        long baseOffset = ScheduleOffsetResolver.resolveSegment(scheduleTime, segmentScale);
+        if (baseOffset < currentBaseOffset) return true;
+
+        if (baseOffset == currentBaseOffset) {
+            return currentOffset <= offset;
+        }
+        return false;
+    }
+
+    @Override
+    public void process(ScheduleIndex index) {
+        scheduleLogSender.addTask(index);
+    }
+
+
+
+    @Override
+    public void run() {
         long next = System.currentTimeMillis() + delayConfig.getLoadInAdvanceTimesInMillis();
-        long prepareLoadBaseOffset = resolveSegment(next, segmentScale);
+        long prepareLoadBaseOffset = ScheduleOffsetResolver.resolveSegment(next, segmentScale);
         try {
             loadUntil(prepareLoadBaseOffset);
         } catch (InterruptedException ignored) {
@@ -151,12 +253,12 @@ public class WheelTickManager implements Switchable, HashedWheelTimer.Processor 
             if (!loadUntilInternal(until)) break;
 
             // load successfully(no error happened) and current wheel loading cursor < until
-            if (loadingCursor.baseOffset() < until) {
+            if (this.loadingCursor.baseOffset() < until) {
                 long thresholdTime = System.currentTimeMillis() + delayConfig.getLoadBlockingExitTimesInMillis();
                 // exit in a few minutes in advance
-                if (resolveSegment(thresholdTime, segmentScale) >= until) {
-                    loadingCursor.shiftCursor(until);
-                    loadedCursor.shiftCursor(until);
+                if (ScheduleOffsetResolver.resolveSegment(thresholdTime, segmentScale) >= until) {
+                    this.loadingCursor.shiftCursor(until);
+                    this.loadedCursor.shiftCursor(until);
                     break;
                 }
             }
@@ -193,109 +295,6 @@ public class WheelTickManager implements Switchable, HashedWheelTimer.Processor 
         }
 
         return true;
-    }
-
-    /**
-     * resolve wheel-load start index
-     *
-     * @return generally, result > 0, however the result might be -1. -1 mean that no higher key.
-     */
-    private long resolveStartIndex() {
-        WheelLoadCursor.Cursor loadedEntry = loadedCursor.cursor();
-        long startIndex = loadedEntry.getBaseOffset();
-        long offset = loadedEntry.getOffset();
-
-        if (offset < 0) return facade.higherScheduleBaseOffset(startIndex);
-
-        return startIndex;
-    }
-
-    private void loadSegment(ScheduleSetSegment segment) {
-        final long start = System.currentTimeMillis();
-        try {
-            long baseOffset = segment.getSegmentBaseOffset();
-            long offset = segment.getWrotePosition();
-            if (!loadingCursor.shiftCursor(baseOffset, offset)) {
-                LOGGER.error("doLoadSegment error,shift loadingCursor failed,from {}-{} to {}-{}", loadingCursor.baseOffset(), loadingCursor.offset(), baseOffset, offset);
-                return;
-            }
-
-            WheelLoadCursor.Cursor loadedCursorEntry = loadedCursor.cursor();
-            // have loaded
-            if (baseOffset < loadedCursorEntry.getBaseOffset()) return;
-
-            long startOffset = 0;
-            // last load action happened error
-            if (baseOffset == loadedCursorEntry.getBaseOffset() && loadedCursorEntry.getOffset() > -1)
-                startOffset = loadedCursorEntry.getOffset();
-
-            LogVisitor<ScheduleIndex> visitor = segment.newVisitor(startOffset, delayConfig.getSingleMessageLimitSize());
-            try {
-                loadedCursor.shiftCursor(baseOffset, startOffset);
-
-                long currentOffset = startOffset;
-                while (currentOffset < offset) {
-                    Optional<ScheduleIndex> recordOptional = visitor.nextRecord();
-                    if (!recordOptional.isPresent()) break;
-                    ScheduleIndex index = recordOptional.get();
-                    currentOffset = index.getOffset() + index.getSize();
-                    refresh(index);
-                    loadedCursor.shiftOffset(currentOffset);
-                }
-                loadedCursor.shiftCursor(baseOffset);
-                LOGGER.info("loaded segment:{} {}", loadedCursor.baseOffset(), currentOffset);
-            } finally {
-                visitor.close();
-            }
-        } finally {
-//            Metrics.timer("loadSegmentTimer").update(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS);
-        }
-    }
-
-    private void refresh(ScheduleIndex index) {
-        long now = System.currentTimeMillis();
-        long scheduleTime = now;
-        try {
-            scheduleTime = index.getScheduleTime();
-            timer.newTimeout(index, scheduleTime - now, TimeUnit.MILLISECONDS);
-        } catch (Throwable e) {
-            LOGGER.error("wheel refresh error, scheduleTime:{}, delay:{}", scheduleTime, scheduleTime - now);
-            throw Throwables.propagate(e);
-        }
-    }
-
-    @Override
-    public void shutdown() {
-        if (isStarted()) {
-            loadScheduler.shutdown();
-            timer.stop();
-            scheduleLogSender.destroy();
-            started.set(false);
-            LOGGER.info("wheel shutdown.");
-        }
-    }
-
-    public void addWheel(ScheduleIndex index) {
-        refresh(index);
-    }
-
-    public boolean canAdd(long scheduleTime, long offset) {
-        WheelLoadCursor.Cursor currentCursor = loadingCursor.cursor();
-        long currentBaseOffset = currentCursor.getBaseOffset();
-        long currentOffset = currentCursor.getOffset();
-
-        long baseOffset = resolveSegment(scheduleTime, segmentScale);
-        if (baseOffset < currentBaseOffset) return true;
-
-        if (baseOffset == currentBaseOffset) {
-            return currentOffset <= offset;
-        }
-        return false;
-    }
-
-    @Override
-    public void process(ScheduleIndex index) {
-        scheduleLogSender.addTask(index);
     }
 
 }

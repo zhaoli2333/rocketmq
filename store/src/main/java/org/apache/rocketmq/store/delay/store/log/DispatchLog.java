@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 
 public class DispatchLog extends AbstractDelayLog<Boolean> {
     /**
-     * message log flush interval,500ms
+     * log flush interval,500ms
      */
     private static final int DEFAULT_FLUSH_INTERVAL = 500;
 

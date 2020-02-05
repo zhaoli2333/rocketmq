@@ -18,28 +18,28 @@ package org.apache.rocketmq.store.delay.cleaner;
 
 import org.apache.rocketmq.store.delay.common.Switchable;
 import org.apache.rocketmq.store.delay.store.log.DispatchLog;
-import org.apache.rocketmq.store.delay.store.IterateOffsetManager;
 import org.apache.rocketmq.store.delay.store.PeriodicFlushService;
+import org.apache.rocketmq.store.delay.store.log.ScheduleLog;
 
 public class LogFlusher implements Switchable {
     private final PeriodicFlushService dispatchLogFlushService;
-    private final PeriodicFlushService iterateOffsetFlushService;
+    private final PeriodicFlushService scheduleLogFlushService;
 
-    public LogFlusher(IterateOffsetManager offsetManager, DispatchLog dispatchLog) {
+    public LogFlusher(ScheduleLog scheduleLog, DispatchLog dispatchLog) {
         this.dispatchLogFlushService = new PeriodicFlushService(dispatchLog.getProvider());
-        this.iterateOffsetFlushService = new PeriodicFlushService(offsetManager.getFlushProvider());
+        this.scheduleLogFlushService = new PeriodicFlushService(scheduleLog.getProvider());
     }
 
     @Override
     public void start() {
         dispatchLogFlushService.start();
-        iterateOffsetFlushService.start();
+        scheduleLogFlushService.start();
     }
 
     @Override
     public void shutdown() {
         dispatchLogFlushService.close();
-        iterateOffsetFlushService.close();
+        scheduleLogFlushService.close();
     }
 
 }

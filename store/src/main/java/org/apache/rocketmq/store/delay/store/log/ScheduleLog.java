@@ -19,6 +19,7 @@ package org.apache.rocketmq.store.delay.store.log;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
+import org.apache.rocketmq.store.delay.store.PeriodicFlushService;
 import org.apache.rocketmq.store.delay.store.appender.ScheduleSetAppender;
 import org.apache.rocketmq.store.delay.base.LongHashSet;
 import org.apache.rocketmq.store.delay.common.Disposable;
@@ -38,6 +39,11 @@ import java.util.function.Consumer;
 
 public class ScheduleLog implements Log<ScheduleIndex, LogRecord>, Disposable {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
+
+    /**
+     * log flush interval,500ms
+     */
+    private static final int DEFAULT_FLUSH_INTERVAL = 500;
 
     private final ScheduleSet scheduleSet;
     private final AtomicBoolean open;
@@ -147,5 +153,19 @@ public class ScheduleLog implements Log<ScheduleIndex, LogRecord>, Disposable {
 
     public long higherBaseOffset(long low) {
         return scheduleSet.higherBaseOffset(low);
+    }
+
+    public PeriodicFlushService.FlushProvider getProvider() {
+        return new PeriodicFlushService.FlushProvider() {
+            @Override
+            public int getInterval() {
+                return DEFAULT_FLUSH_INTERVAL;
+            }
+
+            @Override
+            public void flush() {
+                ScheduleLog.this.flush();
+            }
+        };
     }
 }
