@@ -17,7 +17,7 @@ dispatchLogKeepTime=72 ##dispatchLog过期后保存的小时数，默认72
 <a name="vmcMt"></a>
 #### producer
 ```
-				DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
+	DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
 
         producer.setNamesrvAddr("127.0.0.1:9876");
 
@@ -31,7 +31,7 @@ dispatchLogKeepTime=72 ##dispatchLog过期后保存的小时数，默认72
                     ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
 
-								/*
+		/*
                  * 设置延迟时间，单位：秒
                  */
                 msg.setDelayTime(5);
