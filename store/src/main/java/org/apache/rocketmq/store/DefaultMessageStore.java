@@ -1486,8 +1486,12 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     private boolean isDelayMessage(DispatchRequest dispatchRequest)  {
+        Map<String, String> propertiesMap = dispatchRequest.getPropertiesMap();
+        if(propertiesMap == null) {
+            return false;
+        }
         long delayTime = 0L;
-        String t = dispatchRequest.getPropertiesMap().get(MessageConst.PROPERTY_DELAY_TIME);
+        String t = propertiesMap.get(MessageConst.PROPERTY_DELAY_TIME);
         if (t != null) {
             delayTime =  Long.parseLong(t);
         }
