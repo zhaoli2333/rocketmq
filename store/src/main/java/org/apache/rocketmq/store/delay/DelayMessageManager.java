@@ -50,7 +50,7 @@ public class DelayMessageManager {
     public void buildScheduleLog(DispatchRequest request) {
         SelectMappedBufferResult selectMappedBufferResult = null;
         try {
-            selectMappedBufferResult = defaultMessageStore.getCommitLog().getData(request.getCommitLogOffset());
+            selectMappedBufferResult = defaultMessageStore.selectOneMessageByOffset(request.getCommitLogOffset());
 
             long scheduleTime = request.getStoreTimestamp() + Long.parseLong(request.getPropertiesMap().get(MessageConst.PROPERTY_DELAY_TIME)) * 1000;
 
