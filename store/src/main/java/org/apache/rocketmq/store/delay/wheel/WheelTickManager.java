@@ -227,7 +227,10 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
 
     @Override
     public void process(ScheduleIndex index) {
-        scheduleLogSender.addTask(index);
+        boolean success = scheduleLogSender.addTask(index);
+        if(!success) {
+            LOGGER.error("wheel process failed, because the task queue is full");
+        }
     }
 
 

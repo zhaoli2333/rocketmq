@@ -27,7 +27,7 @@ public class ScheduleLogSender implements Runnable{
 
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
-    private static final int DEFAULT_QUEUE_SIZE = 10000;
+    private static final int DEFAULT_QUEUE_SIZE = 1000000;
     private static final int DEFAULT_PROCESS_THREADS = Runtime.getRuntime().availableProcessors() + 1;
 
     private int queueSize = DEFAULT_QUEUE_SIZE;
