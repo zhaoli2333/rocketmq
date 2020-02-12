@@ -20,13 +20,13 @@ package org.apache.rocketmq.store.delay.store.appender;
 import org.apache.rocketmq.store.delay.model.AppendMessageStatus;
 import org.apache.rocketmq.store.delay.model.AppendRecordResult;
 import org.apache.rocketmq.store.delay.model.LogRecord;
-import org.apache.rocketmq.store.delay.model.ScheduleSetSequence;
+import org.apache.rocketmq.store.delay.model.ScheduleLogSequence;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class ScheduleSetAppender implements LogAppender<ScheduleSetSequence, LogRecord> {
+public class ScheduleSetAppender implements LogAppender<ScheduleLogSequence, LogRecord> {
 
     private final ByteBuffer workingBuffer;
     private final ReentrantLock lock = new ReentrantLock();
@@ -36,7 +36,7 @@ public class ScheduleSetAppender implements LogAppender<ScheduleSetSequence, Log
     }
 
     @Override
-    public AppendRecordResult<ScheduleSetSequence> appendLog(LogRecord log) {
+    public AppendRecordResult<ScheduleLogSequence> appendLog(LogRecord log) {
         workingBuffer.clear();
         workingBuffer.flip();
         final byte[] topicBytes = log.getTopic().getBytes(StandardCharsets.UTF_8);
@@ -55,7 +55,7 @@ public class ScheduleSetAppender implements LogAppender<ScheduleSetSequence, Log
         workingBuffer.put(topicBytes);
         workingBuffer.put(log.getRecord());
         workingBuffer.flip();
-        ScheduleSetSequence record = new ScheduleSetSequence(scheduleTime, sequence);
+        ScheduleLogSequence record = new ScheduleLogSequence(scheduleTime, sequence);
         return new AppendRecordResult<>(AppendMessageStatus.SUCCESS, 0, recordSize, workingBuffer, record);
     }
 

@@ -16,13 +16,13 @@
 
 package org.apache.rocketmq.store.delay.model;
 
-public class AppendScheduleLogRecordResult implements RecordResult<ScheduleSetSequence> {
+public class AppendScheduleLogRecordResult implements RecordResult<ScheduleLogSequence> {
     private PutMessageStatus status;
 
-    private AppendMessageResult<ScheduleSetSequence> result;
+    private AppendMessageResult<ScheduleLogSequence> result;
 
 
-    public AppendScheduleLogRecordResult(PutMessageStatus status, AppendMessageResult<ScheduleSetSequence> result) {
+    public AppendScheduleLogRecordResult(PutMessageStatus status, AppendMessageResult<ScheduleLogSequence> result) {
         this.status = status;
         this.result = result;
     }
@@ -33,7 +33,7 @@ public class AppendScheduleLogRecordResult implements RecordResult<ScheduleSetSe
     }
 
     @Override
-    public AppendMessageResult<ScheduleSetSequence> getResult() {
+    public AppendMessageResult<ScheduleLogSequence> getResult() {
         return result;
     }
 

@@ -64,6 +64,8 @@ public abstract class AbstractDelaySegment<T> implements DelaySegment<T> {
         }
     }
 
+    public abstract void afterAppendSuccess(LogRecord log);
+
     @Override
     public AppendMessageResult<T> append(LogRecord log, LogAppender<T, LogRecord> appender) {
         appender.lockAppender();
@@ -89,6 +91,7 @@ public abstract class AbstractDelaySegment<T> implements DelaySegment<T> {
             long channelPosition = wrotePosition.addAndGet(wroteBytes);
             this.needFlush.set(true);
             fileChannel.position(channelPosition);
+            afterAppendSuccess(log);
             return new AppendMessageResult<>(AppendMessageStatus.SUCCESS, currentPos, wroteBytes, result.getAdditional());
         } catch (Exception e) {
             LOGGER.error("appendMessageLog delay segment error,io ex,segment file:{}", fileName, e);

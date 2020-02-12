@@ -36,6 +36,7 @@ import org.apache.rocketmq.common.message.MessageExtBatch;
 import org.apache.rocketmq.common.sysflag.MessageSysFlag;
 import org.apache.rocketmq.store.config.BrokerRole;
 import org.apache.rocketmq.store.config.FlushDiskType;
+import org.apache.rocketmq.store.delay.DelayMessageManager;
 import org.apache.rocketmq.store.ha.HAService;
 import org.apache.rocketmq.store.schedule.ScheduleMessageService;
 
@@ -566,6 +567,15 @@ public class CommitLog {
 
                 msg.setTopic(topic);
                 msg.setQueueId(queueId);
+            }
+
+            if(msg.getDelayTime() > 0) {
+                topic = DelayMessageManager.DELAY_TOPIC;
+                // Backup real topic
+                MessageAccessor.putProperty(msg, MessageConst.PROPERTY_REAL_TOPIC, msg.getTopic());
+                msg.setPropertiesString(MessageDecoder.messageProperties2String(msg.getProperties()));
+
+                msg.setTopic(topic);
             }
         }
 

@@ -26,11 +26,11 @@ import org.apache.rocketmq.store.delay.config.DelayMessageStoreConfiguration;
 import org.apache.rocketmq.store.delay.model.AppendLogResult;
 import org.apache.rocketmq.store.delay.model.LogRecord;
 import org.apache.rocketmq.store.delay.model.ScheduleIndex;
-import org.apache.rocketmq.store.delay.model.ScheduleSetRecord;
+import org.apache.rocketmq.store.delay.model.ScheduleLogRecord;
 import org.apache.rocketmq.store.delay.store.log.DispatchLog;
 import org.apache.rocketmq.store.delay.store.log.DispatchLogSegment;
 import org.apache.rocketmq.store.delay.store.log.ScheduleLog;
-import org.apache.rocketmq.store.delay.store.log.ScheduleSetSegment;
+import org.apache.rocketmq.store.delay.store.log.ScheduleLogSegment;
 import org.apache.rocketmq.store.delay.wheel.WheelLoadCursor;
 
 import java.util.function.Consumer;
@@ -69,12 +69,12 @@ public class DefaultDelayLogFacade implements DelayLogFacade {
 
     @Override
     public AppendLogResult<ScheduleIndex> appendScheduleLog(LogRecord record) {
-        return scheduleLog.append(record);
+        return scheduleLog.appendLog(record);
     }
 
 
     @Override
-    public ScheduleSetRecord recoverLogRecord(final ScheduleIndex scheduleIndex) {
+    public ScheduleLogRecord recoverLogRecord(final ScheduleIndex scheduleIndex) {
         return scheduleLog.recoverLogRecord(scheduleIndex);
     }
 
@@ -94,12 +94,12 @@ public class DefaultDelayLogFacade implements DelayLogFacade {
     }
 
     @Override
-    public ScheduleSetSegment loadScheduleLogSegment(final long segmentBaseOffset) {
+    public ScheduleLogSegment loadScheduleLogSegment(final long segmentBaseOffset) {
         return scheduleLog.loadSegment(segmentBaseOffset);
     }
 
     @Override
-    public WheelLoadCursor.Cursor loadUnDispatch(final ScheduleSetSegment setSegment, final LongHashSet dispatchedSet, final Consumer<ScheduleIndex> refresh) {
+    public WheelLoadCursor.Cursor loadUnDispatch(final ScheduleLogSegment setSegment, final LongHashSet dispatchedSet, final Consumer<ScheduleIndex> refresh) {
         return scheduleLog.loadUnDispatch(setSegment, dispatchedSet, refresh);
     }
 
@@ -112,7 +112,5 @@ public class DefaultDelayLogFacade implements DelayLogFacade {
     public long higherDispatchLogBaseOffset(long segmentBaseOffset) {
         return dispatchLog.higherBaseOffset(segmentBaseOffset);
     }
-
-
 
 }

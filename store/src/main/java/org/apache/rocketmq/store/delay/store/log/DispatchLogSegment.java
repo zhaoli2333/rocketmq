@@ -20,6 +20,7 @@ import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.delay.base.SegmentBufferExtend;
+import org.apache.rocketmq.store.delay.model.LogRecord;
 import org.apache.rocketmq.store.delay.store.visitor.DispatchLogVisitor;
 import org.apache.rocketmq.store.delay.store.visitor.LogVisitor;
 
@@ -33,6 +34,9 @@ public class DispatchLogSegment extends AbstractDelaySegment<Boolean> {
     DispatchLogSegment(File file) throws IOException {
         super(file);
     }
+
+    @Override
+    public void afterAppendSuccess(LogRecord log) {}
 
     @Override
     public long validate() throws IOException {

@@ -20,9 +20,9 @@ import org.apache.rocketmq.store.delay.base.LongHashSet;
 import org.apache.rocketmq.store.delay.model.AppendLogResult;
 import org.apache.rocketmq.store.delay.model.LogRecord;
 import org.apache.rocketmq.store.delay.model.ScheduleIndex;
-import org.apache.rocketmq.store.delay.model.ScheduleSetRecord;
+import org.apache.rocketmq.store.delay.model.ScheduleLogRecord;
 import org.apache.rocketmq.store.delay.store.log.DispatchLogSegment;
-import org.apache.rocketmq.store.delay.store.log.ScheduleSetSegment;
+import org.apache.rocketmq.store.delay.store.log.ScheduleLogSegment;
 import org.apache.rocketmq.store.delay.wheel.WheelLoadCursor;
 
 import java.util.function.Consumer;
@@ -35,7 +35,7 @@ public interface DelayLogFacade {
 
     AppendLogResult<ScheduleIndex> appendScheduleLog(LogRecord event);
 
-    public ScheduleSetRecord recoverLogRecord(final ScheduleIndex scheduleIndex);
+    public ScheduleLogRecord recoverLogRecord(final ScheduleIndex scheduleIndex);
 
     public void appendDispatchLog(LogRecord record);
 
@@ -43,9 +43,9 @@ public interface DelayLogFacade {
 
     public DispatchLogSegment lowerDispatchSegment(final long baseOffset);
 
-    public ScheduleSetSegment loadScheduleLogSegment(final long segmentBaseOffset);
+    public ScheduleLogSegment loadScheduleLogSegment(final long segmentBaseOffset);
 
-    public WheelLoadCursor.Cursor loadUnDispatch(final ScheduleSetSegment setSegment, final LongHashSet dispatchedSet, final Consumer<ScheduleIndex> refresh);
+    public WheelLoadCursor.Cursor loadUnDispatch(final ScheduleLogSegment setSegment, final LongHashSet dispatchedSet, final Consumer<ScheduleIndex> refresh);
 
     public long higherScheduleBaseOffset(long index);
 

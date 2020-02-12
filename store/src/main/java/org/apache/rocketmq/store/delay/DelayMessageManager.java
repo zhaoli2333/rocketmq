@@ -16,6 +16,8 @@ public class DelayMessageManager {
 
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    public static final String DELAY_TOPIC = "DELAY_TOPIC_XXXX";
+
     private DelayMessageStoreConfiguration storeConfig;
 
     private MessageStoreConfig messageStoreConfig;
@@ -48,13 +50,14 @@ public class DelayMessageManager {
 
 
     public void buildScheduleLog(DispatchRequest request) {
+
         SelectMappedBufferResult selectMappedBufferResult = null;
         try {
             selectMappedBufferResult = defaultMessageStore.selectOneMessageByOffset(request.getCommitLogOffset());
 
             long scheduleTime = request.getStoreTimestamp() + Long.parseLong(request.getPropertiesMap().get(MessageConst.PROPERTY_DELAY_TIME)) * 1000;
 
-            String topic = request.getTopic();
+            String topic = request.getPropertiesMap().get(MessageConst.PROPERTY_REAL_TOPIC);
             String messageId = request.getUniqKey();
             long sequence = request.getCommitLogOffset();
             LogRecordHeader header = new LogRecordHeader(topic, messageId, scheduleTime, sequence);

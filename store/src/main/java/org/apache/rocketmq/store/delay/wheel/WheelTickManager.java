@@ -29,7 +29,7 @@ import org.apache.rocketmq.store.delay.config.DelayMessageStoreConfiguration;
 import org.apache.rocketmq.store.delay.model.ScheduleIndex;
 import org.apache.rocketmq.store.delay.store.log.DispatchLogSegment;
 import org.apache.rocketmq.store.delay.store.log.ScheduleOffsetResolver;
-import org.apache.rocketmq.store.delay.store.log.ScheduleSetSegment;
+import org.apache.rocketmq.store.delay.store.log.ScheduleLogSegment;
 import org.apache.rocketmq.store.delay.store.visitor.LogVisitor;
 
 import java.util.Optional;
@@ -54,7 +54,7 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
     private final WheelLoadCursor loadingCursor;
     private final WheelLoadCursor loadedCursor;
     private final DefaultMessageStore defaultMessageStore;
-    private final ScheduleLogSender scheduleLogSender;
+    private final WheelSendService wheelSendService;
 
     public WheelTickManager(DelayMessageStoreConfiguration delayConfig, DelayLogFacade facade, DefaultMessageStore defaultMessageStore) {
         this.delayConfig = delayConfig;
@@ -65,7 +65,7 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
         this.loadingCursor = WheelLoadCursor.create();
         this.loadedCursor = WheelLoadCursor.create();
         this.defaultMessageStore = defaultMessageStore;
-        this.scheduleLogSender = new ScheduleLogSender(facade, defaultMessageStore, delayConfig);
+        this.wheelSendService = new WheelSendService(facade, defaultMessageStore, delayConfig);
 
         this.loadScheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("wheel-segment-loader-%d").build());
     }
@@ -74,6 +74,7 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
     public void start() {
         if (!isStarted()) {
             timer.start();
+            wheelSendService.start();
             started.set(true);
             recover();
             loadScheduler.scheduleWithFixedDelay(this, 0, delayConfig.getLoadSegmentDelayMinutes(), TimeUnit.MINUTES);
@@ -99,14 +100,14 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
 
     private void doRecover(DispatchLogSegment dispatchLogSegment) {
         long segmentBaseOffset = dispatchLogSegment.getSegmentBaseOffset();
-        ScheduleSetSegment scheduleSetSegment = facade.loadScheduleLogSegment(segmentBaseOffset);
-        if (scheduleSetSegment == null) {
+        ScheduleLogSegment scheduleLogSegment = facade.loadScheduleLogSegment(segmentBaseOffset);
+        if (scheduleLogSegment == null) {
             LOGGER.error("load schedule index error,dispatch segment:{}", segmentBaseOffset);
             return;
         }
 
         LongHashSet dispatchedSet = loadDispatchLog(dispatchLogSegment);
-        WheelLoadCursor.Cursor loadCursor = facade.loadUnDispatch(scheduleSetSegment, dispatchedSet, this::refresh);
+        WheelLoadCursor.Cursor loadCursor = facade.loadUnDispatch(scheduleLogSegment, dispatchedSet, this::refresh);
         long baseOffset = loadCursor.getBaseOffset();
         loadingCursor.shiftCursor(baseOffset, loadCursor.getOffset());
         loadedCursor.shiftCursor(baseOffset);
@@ -147,7 +148,7 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
         return startIndex;
     }
 
-    private void loadSegment(ScheduleSetSegment segment) {
+    private void loadSegment(ScheduleLogSegment segment) {
         long baseOffset = segment.getSegmentBaseOffset();
         long offset = segment.getWrotePosition();
         if (!loadingCursor.shiftCursor(baseOffset, offset)) {
@@ -201,7 +202,7 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
         if (isStarted()) {
             loadScheduler.shutdown();
             timer.stop();
-            scheduleLogSender.destroy();
+            wheelSendService.shutdown();
             started.set(false);
             LOGGER.info("wheel shutdown.");
         }
@@ -227,7 +228,7 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
 
     @Override
     public void process(ScheduleIndex index) {
-        boolean success = scheduleLogSender.addTask(index);
+        boolean success = wheelSendService.addTask(index);
         if(!success) {
             LOGGER.error("wheel process failed, because the task queue is full");
         }
@@ -278,7 +279,7 @@ public class WheelTickManager implements Runnable, Switchable, HashedWheelTimer.
 
         try {
             while (index <= until) {
-                ScheduleSetSegment segment = facade.loadScheduleLogSegment(index);
+                ScheduleLogSegment segment = facade.loadScheduleLogSegment(index);
                 if (segment == null) {
                     long nextIndex = facade.higherScheduleBaseOffset(index);
                     if (nextIndex < 0) return true;

@@ -16,11 +16,11 @@
 
 package org.apache.rocketmq.store.delay.model;
 
-public class ScheduleSetSequence {
+public class ScheduleLogSequence {
     private final long scheduleTime;
     private final long sequence;
 
-    public ScheduleSetSequence(long scheduleTime, long sequence) {
+    public ScheduleLogSequence(long scheduleTime, long sequence) {
         this.scheduleTime = scheduleTime;
         this.sequence = sequence;
     }

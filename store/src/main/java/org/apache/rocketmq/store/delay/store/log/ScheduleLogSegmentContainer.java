@@ -28,14 +28,15 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 
-public class ScheduleSetSegmentContainer extends AbstractDelaySegmentContainer<ScheduleSetSequence> {
+public class ScheduleLogSegmentContainer extends AbstractDelaySegmentContainer<ScheduleLogSequence> {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
     private final DelayMessageStoreConfiguration config;
 
-    ScheduleSetSegmentContainer(DelayMessageStoreConfiguration config, File logDir, DelaySegmentValidator validator, LogAppender<ScheduleSetSequence, LogRecord> appender) {
+    ScheduleLogSegmentContainer(DelayMessageStoreConfiguration config, File logDir, DelaySegmentValidator validator, LogAppender<ScheduleLogSequence, LogRecord> appender) {
         super(config.getSegmentScale(), logDir, validator, appender);
         this.config = config;
     }
@@ -53,9 +54,9 @@ public class ScheduleSetSegmentContainer extends AbstractDelaySegmentContainer<S
                     continue;
                 }
 
-                DelaySegment<ScheduleSetSequence> segment;
+                DelaySegment<ScheduleLogSequence> segment;
                 try {
-                    segment = new ScheduleSetSegment(file);
+                    segment = new ScheduleLogSegment(file);
                     long size = validator.validate(segment);
                     segment.setWrotePosition(size);
                     segment.setFlushedPosition(size);
@@ -69,7 +70,7 @@ public class ScheduleSetSegmentContainer extends AbstractDelaySegmentContainer<S
     }
 
     @Override
-    protected RecordResult<ScheduleSetSequence> retResult(AppendMessageResult<ScheduleSetSequence> result) {
+    protected RecordResult<ScheduleLogSequence> retResult(AppendMessageResult<ScheduleLogSequence> result) {
         switch (result.getStatus()) {
             case SUCCESS:
                 return new AppendScheduleLogRecordResult(PutMessageStatus.SUCCESS, result);
@@ -79,12 +80,12 @@ public class ScheduleSetSegmentContainer extends AbstractDelaySegmentContainer<S
     }
 
     @Override
-    protected DelaySegment<ScheduleSetSequence> allocSegment(long segmentBaseOffset) {
+    protected DelaySegment<ScheduleLogSequence> allocSegment(long segmentBaseOffset) {
         File nextSegmentFile = new File(logDir, String.valueOf(segmentBaseOffset));
         try {
-            DelaySegment<ScheduleSetSequence> logSegment = new ScheduleSetSegment(nextSegmentFile);
+            DelaySegment<ScheduleLogSequence> logSegment = new ScheduleLogSegment(nextSegmentFile);
             segments.put(segmentBaseOffset, logSegment);
-            LOGGER.info("alloc new schedule set segment file {}", ((ScheduleSetSegment) logSegment).fileName);
+            LOGGER.info("alloc new schedule set segment file {}", ((ScheduleLogSegment) logSegment).fileName);
             return logSegment;
         } catch (IOException e) {
             LOGGER.error("Failed create new schedule set segment file. file: {}", nextSegmentFile.getAbsolutePath(), e);
@@ -92,8 +93,8 @@ public class ScheduleSetSegmentContainer extends AbstractDelaySegmentContainer<S
         return null;
     }
 
-    ScheduleSetRecord recover(long scheduleTime, int size, long offset) {
-        ScheduleSetSegment segment = (ScheduleSetSegment) locateSegment(scheduleTime);
+    ScheduleLogRecord recover(long scheduleTime, int size, long offset) {
+        ScheduleLogSegment segment = (ScheduleLogSegment) locateSegment(scheduleTime);
         if (segment == null) {
             LOGGER.error("schedule set recover null value, scheduleTime:{}, size:{}, offset:{}", scheduleTime, size, offset);
             return null;
@@ -104,38 +105,60 @@ public class ScheduleSetSegmentContainer extends AbstractDelaySegmentContainer<S
 
     public void clean() {
         long checkTime = ScheduleOffsetResolver.resolveSegment(System.currentTimeMillis() - config.getDispatchLogKeepTime() - config.getCheckCleanTimeBeforeDispatch(), segmentScale);
-        for (DelaySegment<ScheduleSetSequence> segment : segments.values()) {
+        for (DelaySegment<ScheduleLogSequence> segment : segments.values()) {
             if (segment.getSegmentBaseOffset() < checkTime) {
                 clean(segment.getSegmentBaseOffset());
             }
         }
     }
 
-    ScheduleSetSegment loadSegment(long segmentBaseOffset) {
-        return (ScheduleSetSegment) segments.get(segmentBaseOffset);
+    ScheduleLogSegment loadSegment(long segmentBaseOffset) {
+        return (ScheduleLogSegment) segments.get(segmentBaseOffset);
     }
 
-    Map<Long, Long> countSegments() {
-        final Map<Long, Long> offsets = new HashMap<>(segments.size());
-        segments.values().forEach(segment -> offsets.put(segment.getSegmentBaseOffset(), segment.getWrotePosition()));
-        return offsets;
+    Map<Long, Map<String, Long>> countSegments() {
+        final Map<Long, Map<String, Long>> offsetTable = new  HashMap<Long, Map<String, Long>>(segments.size());
+        for(Map.Entry<Long, DelaySegment<ScheduleLogSequence>> entry : segments.entrySet()) {
+            Map<String, Long> map = new HashMap<String, Long>();
+
+            long baseOffset = entry.getKey();
+            ScheduleLogSegment delaySegment = (ScheduleLogSegment)entry.getValue();
+
+            map.put(ScheduleLogCheckPointKey.SCHEDULE_LOG_OFFSET, delaySegment.getWrotePosition());
+            map.put(ScheduleLogCheckPointKey.COMMIT_LOG_OFFSET, delaySegment.getMaxCommitLogOffset());
+            offsetTable.put(baseOffset, map);
+        }
+        return offsetTable;
     }
 
-    void reValidate(final Map<Long, Long> offsets, int singleMessageLimitSize) {
+    long reValidate(final Map<Long, Map<String, Long>>  offsetTable, int singleMessageLimitSize) {
+        ConcurrentSkipListSet<Long> commitLogOffsets = new ConcurrentSkipListSet<Long>();
         segments.values().parallelStream().forEach(segment -> {
-            Long offset = offsets.get(segment.getSegmentBaseOffset());
+            Map<String, Long> offsetMap = offsetTable.get(segment.getSegmentBaseOffset());
+            Long scheduleLogOffset = null;
+            Long commitLogOffset = null;
+            if(offsetMap != null) {
+                scheduleLogOffset = offsetMap.get(ScheduleLogCheckPointKey.SCHEDULE_LOG_OFFSET);
+                commitLogOffset = offsetMap.get(ScheduleLogCheckPointKey.COMMIT_LOG_OFFSET);
+            }
             long wrotePosition = segment.getWrotePosition();
-            if (null == offset || offset != wrotePosition) {
-                offset = doValidate((ScheduleSetSegment) segment, singleMessageLimitSize);
+            if (null == scheduleLogOffset || null == commitLogOffset || scheduleLogOffset != wrotePosition) {
+                ScheduleLogValidateResult validateResult = doValidate((ScheduleLogSegment) segment, singleMessageLimitSize);
+                scheduleLogOffset = validateResult.getMaxScheduleLogOffset();
+                commitLogOffset = validateResult.getMaxCommitLogOffset();
+                commitLogOffsets.add(commitLogOffset);
             } else {
-                offset = wrotePosition;
+                scheduleLogOffset = wrotePosition;
+                commitLogOffsets.add(commitLogOffset);
             }
 
-            ((ScheduleSetSegment) segment).loadOffset(offset);
+            ((ScheduleLogSegment) segment).loadOffset(scheduleLogOffset, commitLogOffset);
         });
+
+        return commitLogOffsets.size() > 0  ? commitLogOffsets.last() : -1 ;
     }
 
-    private long doValidate(ScheduleSetSegment segment, int singleMessageLimitSize) {
+    private ScheduleLogValidateResult doValidate(ScheduleLogSegment segment, int singleMessageLimitSize) {
         return segment.doValidate(singleMessageLimitSize);
     }
 }
