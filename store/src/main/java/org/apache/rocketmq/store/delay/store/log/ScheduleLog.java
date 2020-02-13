@@ -83,7 +83,7 @@ public class ScheduleLog extends AbstractDelayLog<ScheduleLogSequence> implement
         }
 
         if(record.getSequence() <= getMaxPhysicOffset()) {
-            return new AppendLogResult<>(MessageProducerCode.MESSAGE_DUPLICATE, "message duplicate");
+            return new AppendLogResult<>(MessageProducerCode.MESSAGE_DUPLICATE, "message duplicate, maybe try to build consume queue repeatedly ");
         }
 
         AppendLogResult<RecordResult<ScheduleLogSequence>> result = this.append(record);

@@ -66,7 +66,7 @@ public class DelayMessageManager {
             AppendLogResult<ScheduleIndex> appendLogResult = delayLogFacade.appendScheduleLog(record);
 
             if (MessageProducerCode.SUCCESS != appendLogResult.getCode()) {
-                LOGGER.error("Append schedule log error,log:{} {},code:{}", record.getTopic(), record.getMessageId(), appendLogResult.getCode());
+                LOGGER.error("Append schedule log error,topic:{} ,commit offset:{}, code:{}, message:{}", record.getTopic(), record.getSequence(), appendLogResult.getCode(), appendLogResult.getRemark());
                 return;
             }
             // 如果需要，加入内存时间轮
