@@ -59,7 +59,7 @@ dispatchLogKeepTime=72 ##dispatchLog过期后保存的小时数，默认72
 延时消息设计思路主要来自于去哪儿网的qmq，使用两层hash wheel来实现。第一层位于磁盘上，默认每个小时为一个刻度，可以根据实际情况在配置里进行调整(segmentScale)。每个刻度会生成一个日志文件(schedulelog)，支持一年内的延迟消息，因此最多会生成8784个文件。第二层在内存中，当消息的投递时间即将到来的时候，会将这个小时的消息索引(索引包括消息在schedulelog中的offset和size)从磁盘文件加载到内存中的hash wheel上，内存中的hash wheel则是以500ms为一个刻度。之所以存索引而不存消息本身是因为当消息并发量很大时把1小时的消息放到内存消耗太大不可接受，所以当投递时间到达时，需要根据消息索引再去schedulelog中回查出消息本身，再投递。<br />
 
 ### 整体架构
-![](./docs/cn/image/rocketmq_design_delay_mesage.png)
+![](./docs/cn/image/rocketmq_design_14.png)
 
 
 <a name="Qbp4e"></a>
