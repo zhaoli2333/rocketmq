@@ -65,10 +65,13 @@ dispatchLogKeepTime=72 ##dispatchLog过期后保存的小时数，默认72
 <a name="Qbp4e"></a>
 #### 主要文件
 **schedulelog**：按照投递时间组织，文件名就是投递的时间区间（如2020020213）。写schedulelog的入口是在DefaultMessageStore的dispatcher链中新增了一环，当发现是延迟消息时，会修改原始消息的topic为“DELAY_TOPIC_XXXX”，且跳过consumequeue文件，直接写schedulelog。schedulelog里是包含完整的消息内容的，所以commitlog过期被删除也不影响延迟消息的投递。当延迟时间到达时再重新修改topic，投递到原本的commitlog和consumequeue。
-<br />
+
+
 **dispatchlog**：在延时消息投递成功后写入，主要用于在应用重启后能够确定哪些消息已经投递，dispatchlog里写入的是消息在schedulelog的offset，不包含消息内容。其用途是当延时server中途重启时，我们需要判断出当前这个刻度(比如一个小时)里的消息有哪些已经投递了则不重复投递，没投递的则扔进内存的hash wheel准备投递。
-<br />
+
+
 **schedule_offset_checkpoint**：在broker正常退出时写入，主要记录每个schedulelog文件的当前写入位置wrotePosition和已写入的最新消息在commitlog中的位移maxCommitLogOffset。前者主要用于broker重启后快速校验schedulelog文件的完整性。后者是由于rocketmq broker重启后的消息重放任务ReputService会重放大量已投递过的消息，因此写schedulelog前必须做去重，去重方式就是如果收到的消息的commitlog offest小于等于maxCommitLogOffset，则表明是重复消息，无需再写。
+
 
 <a name="QhglS"></a>
 ### 主要修改点
